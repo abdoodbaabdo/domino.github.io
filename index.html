@@ -541,13 +541,14 @@ let sortedPlayers = Object.values(stats).sort((a, b) => {
                 db.ref('domino_league/history').set([])
                 .then(() => alert("تم تصفير الدوري بنجاح عند الجميع!"));
             }
-        } <!-- عنصر الصوت وزر التحكم المدمج والآمن -->
-<audio id="bg-music" loop>
+        } <!-- عنصر الصوت وزر التحكم المحسّن (يمنع تجمد الصفحة) -->
+<!-- لاحظ إضافة preload="none" لمنع التحميل المسبق للملف -->
+<audio id="bg-music" loop preload="none">
   <source src="minetheme.mp3" type="audio/mpeg">
   متصفحك لا يدعم تشغيل الصوت.
 </audio>
 
-<button id="music-toggle" onclick="togglePlay()" style="
+<button id="music-toggle" onclick="togglePlayMusic()" style="
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -570,17 +571,20 @@ let sortedPlayers = Object.values(stats).sort((a, b) => {
 </button>
 
 <script>
-function togglePlay() {
+// دالة التشغيل المحسّنة
+function togglePlayMusic() {
     const bgMusic = document.getElementById('bg-music');
     const musicToggle = document.getElementById('music-toggle');
     
+    // إذا كان الصوت متوقفاً أو لم يتم تحميله بعد
     if (bgMusic.paused) {
+        // المتصفح سيحمل الصوت فقط الآن عند طلب التشغيل
         bgMusic.play().then(() => {
             musicToggle.innerHTML = '🔊';
             musicToggle.style.borderColor = '#10b981'; // إطار أخضر عند التشغيل
         }).catch(error => {
-            alert("يرجى التفاعل مع الصفحة أولاً (اضغط في أي مكان على الشاشة) ثم شغل الصوت!");
             console.log("خطأ في تشغيل الصوت:", error);
+            alert("يرجى الضغط في أي مكان على الصفحة أولاً، ثم حاول تشغيل الصوت مجدداً.");
         });
     } else {
         bgMusic.pause();
