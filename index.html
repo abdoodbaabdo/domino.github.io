@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>رابطة الدومينو الليلية</title>
+    <!-- استدعاء مكتبة html2canvas لالتقاط الصور -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- استدعاء مكتبات Firebase الرسمية (Compat Version لسهولة الدمج المباشر) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d0e12;
+            --card-bg: #16171e;
+            --accent: #2563eb;
+            --accent-glow: #3b82f6;
+            --blue-lose: #06b6d4;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: #262933;
+            --success: #10b981;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; padding-bottom: 50px; }
+        
+        h1 { text-align: center; color: #fff; font-size: 26px; margin-bottom: 25px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        h3 { font-size: 16px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        
+        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+        
+        label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+        select, input { width: 100%; padding: 12px; background: #1f212a; border: 1px solid var(--border); color: #fff; border-radius: 10px; font-size: 15px; margin-bottom: 12px; transition: all 0.2s; }
+        select:focus, input:focus { border-color: var(--accent); outline: none; background: #242732; }
+        
+        .btn { width: 100%; padding: 12px; font-weight: bold; cursor: pointer; transition: all 0.2s; border-radius: 10px; border: none; font-size: 14px; margin-bottom: 8px; color: #fff; display: inline-block; text-align: center; }
+        .btn-primary { background: var(--accent); }
+        .btn-primary:hover { background: var(--accent-glow); }
+        .btn-blue { background: linear-gradient(135deg, #0891b2, #06b6d4); font-size: 13px; }
+        .btn-blue:hover { opacity: 0.9; }
+        .btn-danger { background: var(--danger); }
+        .btn-success { background: var(--success); }
+        .btn-purple { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+
+        .flex-grid { display: flex; gap: 15px; }
+        .flex-grid > div { flex: 1; }
+
+        .table-wrapper { overflow-x: auto; border-radius: 10px; background: #1f212a; border: 1px solid var(--border); margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
+        th, td { padding: 14px 10px; border-bottom: 1px solid var(--border); }
+        th { background-color: #1a1b24; color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; }
+        
+        .txt-blue { color: var(--blue-lose); font-weight: bold; }
+        .txt-win { color: var(--success); font-weight: bold; }
+        .txt-loss { color: var(--danger); }
+
+        #capture-area { padding: 15px; background: #0d0e12; border-radius: 12px; }
+        .image-preview-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
+        .image-preview-modal img { max-width: 100%; max-height: 70%; border-radius: 12px; border: 3px solid var(--blue-lose); box-shadow: 0 0 20px rgba(6, 182, 212, 0.5); margin-bottom: 20px; }
+
+        .rivalry-selects { background: #1a1b24; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border); }
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; text-align: center; margin-top: 5px; }
+        .stat-box { background: #1f212a; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .stat-val { font-size: 24px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+        .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+        .log-item { font-size: 13px; color: var(--text-main); padding: 10px; border-radius: 8px; background: #1f212a; margin-bottom: 8px; border-right: 4px solid var(--accent); }
+        .log-item.blue-styled { border-right-color: var(--blue-lose); background: linear-gradient(to left, rgba(6, 182, 212, 0.05), transparent); }
+
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #030406; z-index: 99999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.8s ease; overflow: hidden;
+        }
+        .zorg-bg {
+            position: absolute; width: 110%; height: 110%; top: -5%; left: -5%;
+            display: grid; grid-template-columns: repeat(8, 1fr);
+            gap: 12px; padding: 10px; opacity: 0.12; pointer-events: none;
+            font-size: 12px; font-weight: 900; color: var(--blue-lose);
+            user-select: none; transform: rotate(-5deg);
+        }
+        .zorg-word { animation: pulseWord 1.2s infinite alternate; text-align: center; white-space: nowrap; }
+        .zorg-word:nth-child(even) { animation-delay: 0.4s; color: #3b82f6; }
+        .zorg-word:nth-child(3n) { animation-delay: 0.8s; }
+        @keyframes pulseWord { 0% { opacity: 0.2; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1.05); } }
+
+        .domino-loader { display: flex; gap: 15px; margin-bottom: 30px; z-index: 2; perspective: 500px; }
+        .domino-piece {
+            width: 35px; height: 70px; background: #111827;
+            border: 3px solid var(--blue-lose); border-radius: 8px;
+            position: relative; box-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+            transform-origin: bottom right;
+            animation: fallAndHit 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0;
+        }
+        .domino-piece:nth-child(1) { animation-delay: 0.2s; }
+        .domino-piece:nth-child(2) { animation-delay: 0.7s; }
+        .domino-piece:nth-child(3) { animation-delay: 1.2s; }
+        .domino-piece::before { content: ''; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background: var(--blue-lose); }
+        .domino-piece::after { content: '•'; position: absolute; top: 12%; left: 35%; color: #fff; font-size: 22px; }
+        @keyframes fallAndHit {
+            0% { transform: translateY(-120px) rotate(-60deg); opacity: 0; }
+            70% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: rotate(72deg); opacity: 1; }
+        }
+        .splash-title { color: #fff; font-size: 26px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 15px var(--blue-lose); z-index: 2; animation: textGlow 1.5s infinite alternate; }
+        @keyframes textGlow { 0% { transform: scale(0.95); } 100% { transform: scale(1.05); } }
+
+        #password-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 99998; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 30px; }
+        .password-container { width: 100%; max-width: 340px; background: var(--card-bg); border: 1px solid var(--border); padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+
+    <!-- واجهة شاشة البدء السحرية -->
+    <div id="splash-screen" onclick="playKillSound()">
+        <div class="zorg-bg">
+            <div class="zorg-word">زرق 🥶</div><div class="zorg-word">زرق 🥶</div><div class="zorg-word">زرق 🥶</div><div class="zorg-word">زرق 🥶</div>
+            <div class="zorg-word">زرق 🥶</div><div class="zorg-word">زرق 🥶</div><div class="zorg-word">زرق 🥶</div><div class="zorg-word">زرق 🥶</div>
+        </div>
+        <div class="domino-loader">
+            <div class="domino-piece"></div>
+            <div class="domino-piece"></div>
+            <div class="domino-piece"></div>
+        </div>
+        <div class="splash-title">رابطة الدومينو الليلية</div>
+        <p style="color: var(--text-muted); font-size: 11px; margin-top: 15px; z-index: 2; letter-spacing: 1px;">جاري الاتصال بالسحاب اللحظي...</p>
+    </div>
+
+    <!-- واجهة كلمة السر -->
+    <div id="password-screen">
+        <div class="password-container">
+            <h3 style="border:none; justify-content:center; font-size:18px; margin-bottom:10px;">🔒 نظام دخول الرابطة</h3>
+            <p style="color: var(--text-muted); font-size:13px; margin-bottom:20px;">الرجاء إدخال رمز الدخول السري للمتابعة</p>
+            <input type="password" id="app-password-input" placeholder="أدخل كلمة المرور هنا..." style="text-align: center; font-size:18px; letter-spacing: 5px;">
+            <button class="btn btn-primary" onclick="verifyPassword()">تأكيد الدخول</button>
+            <p id="password-error" style="color: var(--danger); font-size:12px; margin-top:8px; display:none;">⚠️ الرمز غير صحيح! حاول مجدداً.</p>
+        </div>
+    </div>
+
+    <!-- المحتوى الفعلي للتطبيق -->
+    <div id="main-content" style="display:none;">
+        <h1>🂟 دوري الدومينو السحابي 🂟</h1>
+
+        <!-- قسم ضبط أسماء اللاعبين -->
+        <div class="card" id="setup-card">
+            <h3>👥 1. ضبط أسماء اللاعبين الـ 5</h3>
+            <div id="player-inputs">
+                <input type="text" id="p1" value="عبد النور">
+                <input type="text" id="p2" value="لاعب 2">
+                <input type="text" id="p3" value="لاعب 3">
+                <input type="text" id="p4" value="لاعب 4">
+                <input type="text" id="p5" value="لاعب 5">
+            </div>
+            <button class="btn btn-primary" onclick="updatePlayerNames()">حفظ وتحديث الأسماء سحابياً</button>
+        </div>
+
+        <!-- تسجيل مباراة جديدة -->
+        <div class="card" id="match-card">
+            <h3>🂟 2. تسجيل مباراة</h3>
+            <div class="flex-grid">
+                <div>
+                    <h4 style="font-size:13px; margin-bottom:8px; color:var(--accent);">الفريق الأول</h4>
+                    <label>اللاعب الأول</label>
+                    <select id="t1p1"></select>
+                    <label>اللاعب الثاني</label>
+                    <select id="t1p2"></select>
+                </div>
+                <div>
+                    <h4 style="font-size:13px; margin-bottom:8px; color:var(--danger);">الفريق الثاني</h4>
+                    <label>اللاعب الأول</label>
+                    <select id="t2p1"></select>
+                    <label>اللاعب الثاني</label>
+                    <select id="t2p2"></select>
+                </div>
+            </div>
+            
+            <label style="margin-top:10px; font-size:13px;">من الفائز في هذه الجولة؟</label>
+            <div class="flex-grid">
+                <button class="btn btn-primary" onclick="submitMatch('team1', false)">الفريق 1 فاز (عادي)</button>
+                <button class="btn btn-danger" onclick="submitMatch('team2', false)">الفريق 2 فاز (عادي)</button>
+            </div>
+            <div class="flex-grid">
+                <button class="btn btn-blue" onclick="submitMatch('team1', true)">الفريق 1 أعطاهم خسارة زرقاء 🥶</button>
+                <button class="btn btn-blue" onclick="submitMatch('team2', true)">الفريق 2 أعطاهم خسارة زرقاء 🥶</button>
+            </div>
+        </div>
+
+        <!-- جدول الترتيب العام -->
+        <div class="card" id="leaderboard-card">
+            <div id="capture-area">
+                <h3 style="border:none; margin-bottom:10px; justify-content:center; color: var(--blue-lose);" id="table-header">📊 جدول ترتيب دوري الدومينو الرسمي (محدث لحظياً)</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: right; padding-right:15px;">اللاعب</th>
+                                <th>لعب</th>
+                                <th>فاز 👑</th>
+                                <th>خسر</th>
+                                <th>أزرق 🥶</th>
+                                <th>الضحية</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <button class="btn btn-purple" onclick="generateLeaderboardImage()">📸 تحويل الجدول إلى صورة ومشاركتها</button>
+        </div>
+
+        <!-- النافذة المنبثقة لعرض الصورة الناتجة -->
+        <div class="image-preview-modal" id="preview-modal">
+            <h4 style="color: #fff; margin-bottom: 10px; font-size: 14px;">اضغط مطولاً على الصورة للحفظ أو المشاركة للجروب 👇</h4>
+            <img id="output-image" src="" alt="Leaderboard">
+            <button class="btn btn-danger" style="max-width:200px;" onclick="closeModal()">إغلاق ❌</button>
+        </div>
+
+        <!-- رادار كشف العلاقات -->
+        <div class="card" id="radar-card">
+            <h3>🎯 3. رادار كشف الضحايا والجلادين</h3>
+            <div class="rivalry-selects">
+                <label>اختر اللاعب لتحليل عقده وضَحاياه:</label>
+                <select id="radar-player" onchange="calculateRadar()"></select>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-box" style="border-top: 4px solid var(--success);">
+                    <div class="stat-val txt-win" id="radar-victim">لا أحد</div>
+                    <div class="stat-label">ضحيتك المفضلة (أكثر من جلدته)</div>
+                    <div style="font-size: 11px; margin-top: 4px; color: var(--text-muted);" id="radar-victim-count">جلدته: 0 مرة</div>
+                </div>
+                <div class="stat-box" style="border-top: 4px solid var(--danger);">
+                    <div class="stat-val txt-loss" id="radar-nemesis">لا أحد</div>
+                    <div class="stat-label">جلادك / عقدتك (أكثر من خَسرت ضده)</div>
+                    <div style="font-size: 11px; margin-top: 4px; color: var(--text-muted);" id="radar-nemesis-count">جلدك: 0 مرة</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- سجل المواجهات المباشرة المخصصة -->
+        <div class="card" id="h2h-card">
+            <h3>🔍 4. مقارنة ثنائية مخصصة</h3>
+            <div class="rivalry-selects">
+                <div class="flex-grid">
+                    <div>
+                        <label>اللاعب الأساسي:</label>
+                        <select id="rival-p1" onchange="handleH2HChange(1)"></select>
+                    </div>
+                    <div>
+                        <label>ضد اللاعب:</label>
+                        <select id="rival-p2" onchange="handleH2HChange(2)"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-val txt-win" id="h2h-wins">0</div>
+                    <div class="stat-label">مرات الفوز عليه</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val txt-blue" id="h2h-blues">0</div>
+                    <div class="stat-label">خسارة زرقاء جُلد بها 🥶</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- سجل المباريات الأخيرة -->
+        <div class="card" id="history-card">
+            <h3>📜 آخر 5 مباريات تم لعبها</h3>
+            <div id="history-log"></div>
+            <button class="btn" style="background:#374151; margin-top:15px; font-size:12px; padding:8px;" onclick="resetAllData()">تصفير وإعادة تعيين الدوري سحابياً</button>
+        </div>
+    </div>
+
+    <script>
+        const CORRECT_PASSWORD = "1234"; 
+        let players = ["عبد النور", "لاعب 2", "لاعب 3", "لاعب 4", "لاعب 5"];
+        let matchHistory = [];
+
+        // 🛑 استبدل هذا الإعداد بالإعداد الخاص بمشروعك من Firebase Console 🛑
+        const firebaseConfig = {
+            
+  apiKey: "AIzaSyCB22iolbudsb-ZjBqjw5dfx5e2WV6f00I",
+  authDomain: "domino-live-52b9f.firebaseapp.com",
+  databaseURL: "https://domino-live-52b9f-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "domino-live-52b9f",
+  storageBucket: "domino-live-52b9f.firebasestorage.app",
+  messagingSenderId: "460592689549",
+  appId: "1:460592689549:web:a0aa852c8366d48aa70dc4",
+  measurementId: "G-6XSJD2E7K0"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function playKillSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                let osc1 = ctx.createOscillator(); let gain1 = ctx.createGain();
+                osc1.type = 'triangle'; osc1.frequency.setValueAtTime(800, ctx.currentTime); 
+                osc1.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.15); 
+                gain1.gain.setValueAtTime(0.3, ctx.currentTime); gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                osc1.connect(gain1); gain1.connect(ctx.destination); osc1.start(); osc1.stop(ctx.currentTime + 0.15);
+            } catch (e) { console.log("Audio interactions pending"); }
+        }
+
+        window.onload = function() {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                splash.style.opacity = '0';
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                    checkSecurityGate();
+                }, 800);
+            }, 2500);
+
+            // 🌟 ميزة التحديث التلقائي واللحظي (Realtime Listener)
+            // بمجرد أن يقوم أي شخص بتحديث الأسماء أو إضافة مباراة، سيتم تحديث شاشتك فوراً!
+            db.ref('domino_league/players').on('value', (snapshot) => {
+                if(snapshot.exists()) {
+                    players = snapshot.val();
+                    for(let i=1; i<=5; i++) {
+                        if(document.getElementById(`p${i}`)) document.getElementById(`p${i}`).value = players[i-1];
+                    }
+                    rebuildDropdowns();
+                    renderAll();
+                }
+            });
+
+            db.ref('domino_league/history').on('value', (snapshot) => {
+                matchHistory = snapshot.exists() ? snapshot.val() : [];
+                renderAll();
+            });
+        };
+
+        function checkSecurityGate() {
+            if (localStorage.getItem('domino_authenticated') === 'true') { showMainContent(); } 
+            else { document.getElementById('password-screen').style.display = 'flex'; }
+        }
+
+        function verifyPassword() {
+            const inputVal = document.getElementById('app-password-input').value;
+            if (inputVal === CORRECT_PASSWORD) {
+                localStorage.setItem('domino_authenticated', 'true');
+                document.getElementById('password-screen').style.display = 'none';
+                showMainContent();
+            } else {
+                document.getElementById('password-error').style.display = 'block';
+                document.getElementById('app-password-input').value = '';
+            }
+        }
+
+        function showMainContent() { document.getElementById('main-content').style.display = 'block'; }
+
+        function updatePlayerNames() {
+            for(let i=1; i<=5; i++) { players[i-1] = document.getElementById(`p${i}`).value.trim() || `لاعب ${i}`; }
+            // الحفظ السحابي بدلاً من LocalStorage
+            db.ref('domino_league/players').set(players)
+            .then(() => alert("تم تحديث الأسماء سحابياً عند الجميع!"))
+            .catch(err => alert("فشل الحفظ: تأكد من إعدادات قواعد البيانات الحماية لـ Firebase"));
+        }
+
+        function rebuildDropdowns() {
+            const currentSelections = {
+                t1p1: document.getElementById('t1p1')?.value,
+                t1p2: document.getElementById('t1p2')?.value,
+                t2p1: document.getElementById('t2p1')?.value,
+                t2p2: document.getElementById('t2p2')?.value,
+                'rival-p1': document.getElementById('rival-p1')?.value,
+                'rival-p2': document.getElementById('rival-p2')?.value,
+                'radar-player': document.getElementById('radar-player')?.value
+            };
+
+            const dropdownIds = ['t1p1', 't1p2', 't2p1', 't2p2', 'rival-p1', 'rival-p2', 'radar-player'];
+            dropdownIds.forEach(id => {
+                const el = document.getElementById(id);
+                if(!el) return;
+                el.innerHTML = '';
+                players.forEach(p => {
+                    let opt = document.createElement('option');
+                    opt.value = p; opt.innerText = p; el.appendChild(opt);
+                });
+                if(currentSelections[id] && players.includes(currentSelections[id])) {
+                    el.value = currentSelections[id];
+                }
+            });
+        }
+
+        function handleH2HChange(changedSelect) {
+            const p1El = document.getElementById('rival-p1'); const p2El = document.getElementById('rival-p2');
+            if (p1El.value === p2El.value) {
+                if (changedSelect === 1) p2El.selectedIndex = (p1El.selectedIndex + 1) % players.length;
+                else p1El.selectedIndex = (p2El.selectedIndex + 1) % players.length;
+            }
+            calculateH2H();
+        }
+
+        function submitMatch(winnerTeam, isBlueLose) {
+            const t1p1 = document.getElementById('t1p1').value; const t1p2 = document.getElementById('t1p2').value;
+            const t2p1 = document.getElementById('t2p1').value; const t2p2 = document.getElementById('t2p2').value;
+
+            if((new Set([t1p1, t1p2, t2p1, t2p2])).size !== 4) {
+                alert("خطأ: لا يمكن للاعب واحد أن يلعب في مركزين مختلفين!"); return;
+            }
+
+            matchHistory.push({
+                t1: [t1p1, t1p2], t2: [t2p1, t2p2],
+                winner: winnerTeam, blueLose: isBlueLose,
+                timestamp: new Date().toLocaleString()
+            });
+
+            // إرسال فوري للسحاب
+            db.ref('domino_league/history').set(matchHistory)
+            .then(() => playKillSound())
+            .catch(err => alert("خطأ في الاتصال بالسحاب."));
+        }
+
+        function getHeadToHeadWins(playerA, playerB) {
+            let wins = 0;
+            matchHistory.forEach(m => {
+                const winners = m.winner === 'team1' ? m.t1 : m.t2; const losers = m.winner === 'team1' ? m.t2 : m.t1;
+                if(winners.includes(playerA) && losers.includes(playerB)) wins++;
+            });
+            return wins;
+        }
+
+        function renderAll() {
+            let stats = {};
+            players.forEach(p => { stats[p] = { name: p, played: 0, wins: 0, losses: 0, blueGiven: 0, blueReceived: 0 }; });
+
+            matchHistory.forEach(m => {
+                const winners = m.winner === 'team1' ? m.t1 : m.t2; const losers = m.winner === 'team1' ? m.t2 : m.t1;
+                winners.forEach(w => { if(stats[w]) { stats[w].played++; stats[w].wins++; if(m.blueLose) stats[w].blueGiven++; } });
+                losers.forEach(l => { if(stats[l]) { stats[l].played++; stats[l].losses++; if(m.blueLose) stats[l].blueReceived++; } });
+            });
+
+            let sortedPlayers = Object.values(stats).sort((a, b) => {
+                if (b.blueGiven !== a.blueGiven) return b.blueGiven - a.blueGiven;
+                if (b.wins !== a.wins) return b.wins - a.wins;
+                return getHeadToHeadWins(b.name, a.name) - getHeadToHeadWins(a.name, b.name); 
+            });
+
+            const tbody = document.getElementById('leaderboard-body');
+            if(tbody) {
+                tbody.innerHTML = '';
+                sortedPlayers.forEach((p, idx) => {
+                    let rankEmote = idx === 0 ? "🥇 " : idx === 1 ? "🥈 " : idx === 2 ? "🥉 " : "";
+                    tbody.innerHTML += `<tr>
+                        <td style="text-align: right; padding-right:15px;"><strong>${rankEmote}${p.name}</strong></td>
+                        <td>${p.played}</td>
+                        <td class="txt-win">${p.wins}</td>
+                        <td class="txt-loss">${p.losses}</td>
+                        <td class="txt-blue" style="font-size: 16px;">${p.blueGiven}</td>
+                        <td style="color:#eab308;">${p.blueReceived}</td>
+                    </tr>`;
+                });
+            }
+
+            const logBox = document.getElementById('history-log');
+            if(logBox) {
+                logBox.innerHTML = '';
+                if(matchHistory.length === 0) { logBox.innerHTML = '<div class="log-item">لم يتم تسجيل أي مباريات حتى الآن.</div>'; }
+                else {
+                    [...matchHistory].reverse().slice(0, 5).forEach(m => {
+                        const winNames = m.winner === 'team1' ? `${m.t1[0]} و ${m.t1[1]}` : `${m.t2[0]} و ${m.t2[1]}`;
+                        const loseNames = m.winner === 'team1' ? `${m.t2[0]} و ${m.t2[1]}` : `${m.t1[0]} و ${m.t1[1]}`;
+                        logBox.innerHTML += `<div class="log-item ${m.blueLose ? 'blue-styled' : ''}">
+                            فاز <strong>${winNames}</strong> ضد ${loseNames} ${m.blueLose ? '<span class="txt-blue">(خسارة زرقاء! 🥶)</span>' : ''}
+                        </div>`;
+                    });
+                }
+            }
+            calculateH2H(); calculateRadar();
+        }
+
+        function generateLeaderboardImage() {
+            html2canvas(document.getElementById('capture-area'), { backgroundColor: '#0d0e12', scale: 2, logging: false, useCORS: true })
+            .then(canvas => {
+                document.getElementById('output-image').src = canvas.toDataURL('image/png');
+                document.getElementById('preview-modal').style.display = 'flex';
+            });
+        }
+
+        function closeModal() { document.getElementById('preview-modal').style.display = 'none'; }
+
+        function calculateH2H() {
+            const p1 = document.getElementById('rival-p1')?.value; const p2 = document.getElementById('rival-p2')?.value;
+            if(!p1 || !p2) return;
+            let winsCount = 0; let bluesCount = 0;
+            matchHistory.forEach(m => {
+                const winners = m.winner === 'team1' ? m.t1 : m.t2; const losers = m.winner === 'team1' ? m.t2 : m.t1;
+                if(winners.includes(p1) && losers.includes(p2)) { winsCount++; if(m.blueLose) bluesCount++; }
+            });
+            if(document.getElementById('h2h-wins')) document.getElementById('h2h-wins').innerText = winsCount;
+            if(document.getElementById('h2h-blues')) document.getElementById('h2h-blues').innerText = bluesCount;
+        }
+
+        function calculateRadar() {
+            const activePlayer = document.getElementById('radar-player')?.value;
+            if(!activePlayer) return;
+            let opponentsWins = {}; let opponentsLosses = {};
+            players.forEach(p => { if(p !== activePlayer) { opponentsWins[p] = 0; opponentsLosses[p] = 0; } });
+
+            matchHistory.forEach(m => {
+                const winners = m.winner === 'team1' ? m.t1 : m.t2; const losers = m.winner === 'team1' ? m.t2 : m.t1;
+                if(winners.includes(activePlayer)) losers.forEach(l => { if(opponentsWins[l] !== undefined) opponentsWins[l]++; });
+                if(losers.includes(activePlayer)) winners.forEach(w => { if(opponentsLosses[w] !== undefined) opponentsLosses[w]++; });
+            });
+
+            let bestVictim = "لا أحد"; let maxWins = 0;
+            for(let opp in opponentsWins) { if(opponentsWins[opp] > maxWins) { maxWins = opponentsWins[opp]; bestVictim = opp; } }
+            let biggestNemesis = "لا أحد"; let maxLosses = 0;
+            for(let opp in opponentsLosses) { if(opponentsLosses[opp] > maxLosses) { maxLosses = opponentsLosses[opp]; biggestNemesis = opp; } }
+
+            if(document.getElementById('radar-victim')) document.getElementById('radar-victim').innerText = bestVictim;
+            if(document.getElementById('radar-victim-count')) document.getElementById('radar-victim-count').innerText = `جلدته: ${maxWins} مرة`;
+            if(document.getElementById('radar-nemesis')) document.getElementById('radar-nemesis').innerText = biggestNemesis;
+            if(document.getElementById('radar-nemesis-count')) document.getElementById('radar-nemesis-count').innerText = `جلدك: ${maxLosses} مرة`;
+        }
+
+        function resetAllData() {
+            if(confirm("هل أنت متأكد تماماً من رغبتك في تصفير كل البيانات والمباريات سحابياً؟")) {
+                db.ref('domino_league/history').set([])
+                .then(() => alert("تم تصفير الدوري بنجاح عند الجميع!"));
+            }
+        }
+    </script>
+</body>
+</html>
