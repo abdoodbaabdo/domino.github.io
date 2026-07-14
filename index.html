@@ -535,14 +535,13 @@ let sortedPlayers = Object.values(stats).sort((a, b) => {
             if(document.getElementById('radar-nemesis')) document.getElementById('radar-nemesis').innerText = biggestNemesis;
             if(document.getElementById('radar-nemesis-count')) document.getElementById('radar-nemesis-count').innerText = `جلدك: ${maxLosses} مرة`;
         }
-
-        function resetAllData() {
-            if(confirm("هل أنت متأكد تماماً من رغبتك في تصفير كل البيانات والمباريات سحابياً؟")) {
-                db.ref('domino_league/history').set([])
-                .then(() => alert("تم تصفير الدوري بنجاح عند الجميع!"));
-            }
-        } <!-- عنصر الصوت وزر التحكم المحسّن (يمنع تجمد الصفحة) -->
-<!-- لاحظ إضافة preload="none" لمنع التحميل المسبق للملف -->
+function resetAllData() {
+    if(confirm("هل أنت متأكد تماماً من رغبتك في تصفير كل البيانات والمباريات سحابياً؟")) {
+        db.ref('domino_league/history').set([]);
+    }
+}
+ </script>
+    <!-- ==================== قسم الموسيقى المنفصل ==================== -->
 <audio id="bg-music" loop preload="none">
   <source src="minetheme.mp3" type="audio/mpeg">
   متصفحك لا يدعم تشغيل الصوت.
@@ -571,17 +570,14 @@ let sortedPlayers = Object.values(stats).sort((a, b) => {
 </button>
 
 <script>
-// دالة التشغيل المحسّنة
 function togglePlayMusic() {
     const bgMusic = document.getElementById('bg-music');
     const musicToggle = document.getElementById('music-toggle');
     
-    // إذا كان الصوت متوقفاً أو لم يتم تحميله بعد
     if (bgMusic.paused) {
-        // المتصفح سيحمل الصوت فقط الآن عند طلب التشغيل
         bgMusic.play().then(() => {
             musicToggle.innerHTML = '🔊';
-            musicToggle.style.borderColor = '#10b981'; // إطار أخضر عند التشغيل
+            musicToggle.style.borderColor = '#10b981'; 
         }).catch(error => {
             console.log("خطأ في تشغيل الصوت:", error);
             alert("يرجى الضغط في أي مكان على الصفحة أولاً، ثم حاول تشغيل الصوت مجدداً.");
@@ -589,9 +585,10 @@ function togglePlayMusic() {
     } else {
         bgMusic.pause();
         musicToggle.innerHTML = '🔇';
-        musicToggle.style.borderColor = '#3b82f6'; // يعود للأزرق عند الإيقاف
+        musicToggle.style.borderColor = '#3b82f6'; 
     }
 }
 </script>
+<!-- ============================================================== -->
 </body>
 </html>
