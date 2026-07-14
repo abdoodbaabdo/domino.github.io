@@ -541,7 +541,53 @@ let sortedPlayers = Object.values(stats).sort((a, b) => {
                 db.ref('domino_league/history').set([])
                 .then(() => alert("تم تصفير الدوري بنجاح عند الجميع!"));
             }
-        }
-    </script>
+        } 
+        // التحكم في موسيقى الخلفية المرفوعة
+const bgMusic = document.getElementById('bg-music');
+const musicToggle = document.getElementById('music-toggle');
+
+musicToggle.addEventListener('click', () => {
+    if (bgMusic.paused) {
+        bgMusic.play().then(() => {
+            musicToggle.innerHTML = '🔊';
+            musicToggle.style.borderColor = '#10b981'; // يتغير الإطار للأخضر عند التشغيل
+        }).catch(error => {
+            console.log("تعذر تشغيل الصوت بسبب سياسة المتصفح:", error);
+        });
+    } else {
+        bgMusic.pause();
+        musicToggle.innerHTML = '🔇';
+        musicToggle.style.borderColor = '#3b82f6'; // يعود للأزرق عند الإيقاف
+    }
+});
+    </script> 
+ 
+    <!-- عنصر الصوت وزر التحكم بموسيقاك الخاصة -->
+<audio id="bg-music" loop>
+  <source src="minetheme.mp3" type="audio/mpeg">
+  متصفحك لا يدعم تشغيل الصوت.
+</audio>
+
+<button id="music-toggle" style="
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: #1e293b;
+  color: white;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+">
+  🔇
+</button>
 </body>
 </html>
