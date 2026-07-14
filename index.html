@@ -443,10 +443,17 @@
             });
 
             let sortedPlayers = Object.values(stats).sort((a, b) => {
-                if (b.blueGiven !== a.blueGiven) return b.blueGiven - a.blueGiven;
-                if (b.wins !== a.wins) return b.wins - a.wins;
-                return getHeadToHeadWins(b.name, a.name) - getHeadToHeadWins(a.name, b.name); 
-            });
+            // 1. الترتيب حسب الفوز بالأزرق (الأكثر أولاً)
+            if (b.blueWins !== a.blueWins) {
+                return b.blueWins - a.blueWins;
+            }
+            // 2. عند التساوي، الترتيب حسب الفوز العام (الأكثر أولاً)
+            if (b.totalWins !== a.totalWins) {
+                return b.totalWins - a.totalWins;
+            }
+            // 3. عند التساوي، الترتيب حسب الخسارة بالأزرق (الأقل أولاً - من خسر بالأزرق أكثر ينزل لأسفل)
+            return a.blueLosses - b.blueLosses;
+        });
 
             const tbody = document.getElementById('leaderboard-body');
             if(tbody) {
