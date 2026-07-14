@@ -441,19 +441,18 @@
                 winners.forEach(w => { if(stats[w]) { stats[w].played++; stats[w].wins++; if(m.blueLose) stats[w].blueGiven++; } });
                 losers.forEach(l => { if(stats[l]) { stats[l].played++; stats[l].losses++; if(m.blueLose) stats[l].blueReceived++; } });
             });
-
-            let sortedPlayers = Object.values(stats).sort((a, b) => {
-            // 1. الترتيب حسب الفوز بالأزرق (الأكثر أولاً)
-            if (b.blueWins !== a.blueWins) {
-                return b.blueWins - a.blueWins;
-            }
-            // 2. عند التساوي، الترتيب حسب الفوز العام (الأكثر أولاً)
-            if (b.totalWins !== a.totalWins) {
-                return b.totalWins - a.totalWins;
-            }
-            // 3. عند التساوي، الترتيب حسب الخسارة بالأزرق (الأقل أولاً - من خسر بالأزرق أكثر ينزل لأسفل)
-            return a.blueLosses - b.blueLosses;
-        });
+let sortedPlayers = Object.values(stats).sort((a, b) => {
+                // 1. الأولوية المطلقة: من فاز بالأزرق أكثر يكون في الصدارة
+                if (b.blueGiven !== a.blueGiven) {
+                    return b.blueGiven - a.blueGiven;
+                }
+                // 2. عند التساوي في الأزرق: الترتيب حسب الفوز العام (الأكثر أولاً)
+                if (b.wins !== a.wins) {
+                    return b.wins - a.wins;
+                }
+                // 3. عند التساوي في كل شيء: من خسر بالأزرق أكثر يتذيل الجدول (الأقل خسارة بالأزرق يصعد للأعلى)
+                return a.blueReceived - b.blueReceived;
+            });
 
             const tbody = document.getElementById('leaderboard-body');
             if(tbody) {
